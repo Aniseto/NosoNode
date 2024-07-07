@@ -15,7 +15,7 @@ namespace po = boost::program_options;
 int main(int argc, char* argv[]) {
     try {
         // Define and parse the program options
-        po::options_description desc("Allowed options");
+        po::options_description desc("Allowed options"); //options_description is a class that describes a set of options.
         desc.add_options()
             ("help", "produce help message")
             ("port", po::value<int>()->default_value(8080), "set port number")
