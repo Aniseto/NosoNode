@@ -32,7 +32,7 @@
     <ClInclude Include="Client.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Util.h">
+    <ClInclude Include="Communications.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

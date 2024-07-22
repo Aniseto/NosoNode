@@ -9,6 +9,7 @@
 #include <mutex>
 #include "Server.h"
 #include "Client.h"
+#include "Communications.h"
 
 namespace po = boost::program_options;
 
