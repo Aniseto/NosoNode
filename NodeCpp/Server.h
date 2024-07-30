@@ -13,6 +13,12 @@
 
 using boost::asio::ip::tcp;
 
+#define DEFAULT_NODE_IPV4 "127.0.0.1"
+#define DEFAULT_NODE_PORT 8080
+#define DEFAULT_NODE_VERSION "0.4.2Da1"
+#define DEFAULT_NODE_PROTOCOL 2
+#define DEFAULT_BUFFER_SIZE 1024
+
 class Server {
 
 public:
@@ -41,10 +47,157 @@ public:
         std::cout << "Calculating Node Presentation String\n";
         std::cout << "Node Presentation String-> " << NodePresentation << std::endl;
 
+        
+        
+        //Connect to a node, present and answer to PING using $PONG.
+        // Connect to the destination server and send the NodePresentation
+        boost::asio::io_service io_service;
+        tcp::resolver resolver(io_service);
+        //tcp::resolver::query query("38.242.253.13", "4040");
+        tcp::resolver::query query("20.199.50.27", "8080");
+        //tcp::resolver::query query("38.242.252.153", "4040");
+        tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+        auto socket = std::make_shared<tcp::socket>(io_service);
+        boost::asio::connect(*socket, endpoint_iterator);
+
+        //std::string testping = " $PING 1 0 4E8A4743AA6083F3833DDA1216FE3717 D41D8CD98F00B204E9800998ECF8427E 0 D41D8CD98F00B204E9800998ECF8427E %hu %hu D41D8 0 00000000000000000000000000000000 0 D41D8CD98F00B204E9800998ECF8427E D41D8\n";
+        /*"$PING "                                // Magic string
+            "1 "                                    // Current connections
+            "0 "                                    // Block number
+            "4E8A4743AA6083F3833DDA1216FE3717 "     // Block Hash (Genesis block hash)
+            "D41D8CD98F00B204E9800998ECF8427E "     // Hash summary.psk (This is the MD5 hash for empty)
+            "0 "                                    // Pending Orders
+            "D41D8CD98F00B204E9800998ECF8427E "     // Hash blchhead.nos (This is the MD5 hash for empty)
+            "%hu "                                  // Connections status [0=Disconnected,1=Connecting,2=Connected,3=Updated]
+            "%hu "                                  // Node IP port
+            "D41D8 "                                // Hash(5) masternodes.txt (This is the MD5 hash for empty)
+            "0 "                                    // MNs Count
+            "00000000000000000000000000000000 "     // NMsData diff/ Besthash diff
+            "0 "                                    // Checked Master Nodes
+            "D41D8CD98F00B204E9800998ECF8427E "     // Hash gvts.psk (This is the MD5 hash for empty)
+            "D41D8\n",                              // Hash(5) CFGs
+            g_node_protocol,
+            g_node_version.c_str(),
+            (long long)time(0),
+            g_node_port,
+            conn_status);*/
+        std::string TestPING = " $PING 1 0 4E8A4743AA6083F3833DDA1216FE3717 D41D8CD98F00B204E9800998ECF8427E 0 D41D8CD98F00B204E9800998ECF8427E 0 8080 D41D8 0 00000000000000000000000000000000 0 D41D8CD98F00B204E9800998ECF8427E D41D8\n";
+        std::string message = NodePresentation + "\n";
+        std::string messagecompleted = NodePresentation + TestPING;
+
+        std::cout << "Message Sent Hello ->  " << message; //<< std::endl;
+        std::cout << "Message Sent PING ->  " << TestPING; //<< std::endl;
+        //boost::asio::write(*socket, boost::asio::buffer(message)); //Send Hello
+        //boost::asio::write(*socket, boost::asio::buffer(TestPING));
+        //std::string messageSent = message + TestPING;
+        std::cout << "Message Sent Comppleted ->  " << messagecompleted << std::endl;
+
+        boost::asio::write(*socket, boost::asio::buffer(messagecompleted));
+        try {
+            for (;;) {
+                boost::asio::streambuf buffer;
+                boost::asio::read_until(*socket, buffer, "\n");
+                std::istream is(&buffer);
+                std::string message2;
+                std::getline(is, message2);
+
+                std::cout << "Received: " << message2 << std::endl;
+
+                if (message2 == "$PING ") {
+                    std::cout << "Reci " << message2 << std::endl;
+                    boost::asio::write(*socket, boost::asio::buffer("$PONG\n"));
+                }
+                //else std::cout << "Reci "
+            }
+        }
+        catch (std::exception& e) {
+            std::cerr << "Exception in thread: " << e.what() << std::endl;
+        }
+        // Run the io_service to handle async operations
+        io_service.run();
+
         // check LocalFIles, Download Blocks ( from vaild Node, and Checksum ) , Config .. etc
+
         
 
     }
+    int send_ping(tcp::socket& socket, short conn_status) {
+        //const std::size_t DEFAULT_BUFFER_SIZE = 1024;
+        char buffer[DEFAULT_BUFFER_SIZE];
+        std::size_t ping_size = std::snprintf(
+            buffer, DEFAULT_BUFFER_SIZE - 1,
+            "PSK %u %s %llu "
+            "$PING "                                // Magic string
+            "1 "                                    // Current connections
+            "0 "                                    // Block number
+            "4E8A4743AA6083F3833DDA1216FE3717 "     // Block Hash (Genesis block hash)
+            "D41D8CD98F00B204E9800998ECF8427E "     // Hash summary.psk (This is the MD5 hash for empty)
+            "0 "                                    // Pending Orders
+            "D41D8CD98F00B204E9800998ECF8427E "     // Hash blchhead.nos (This is the MD5 hash for empty)
+            "%hu "                                  // Connections status [0=Disconnected,1=Connecting,2=Connected,3=Updated]
+            "%hu "                                  // Node IP port
+            "D41D8 "                                // Hash(5) masternodes.txt (This is the MD5 hash for empty)
+            "0 "                                    // MNs Count
+            "00000000000000000000000000000000 "     // NMsData diff/ Besthash diff
+            "0 "                                    // Checked Master Nodes
+            "D41D8CD98F00B204E9800998ECF8427E "     // Hash gvts.psk (This is the MD5 hash for empty)
+            "D41D8\n",                              // Hash(5) CFGs
+            g_node_protocol,
+            g_node_version.c_str(),
+            static_cast<long long>(std::time(0)),
+            g_node_port,
+            conn_status);
+
+        boost::system::error_code ec;
+        boost::asio::write(socket, boost::asio::buffer(buffer, ping_size), ec);
+
+        if (ec) {
+            std::cerr << "Failed sending ping command: " << ec.message() << std::endl;
+            return -1;
+        }
+
+        buffer[ping_size - 1] = '\0'; // Eliminate the newline char for output
+        std::cout << " ---> " << buffer << std::endl;
+
+        return 0;
+    }
+    /*static int
+        send_pong(struct bufferevent* bev, short conn_status) {
+        assert(bev);
+        char buffer[DEFAULT_BUFFER_SIZE];
+        std::size_t pong_size = std::snprintf(
+            buffer, DEFAULT_BUFFER_SIZE - 1,
+            "PSK %u %s %llu "
+            "$PONG "                                // Magic string
+            "0 "                                    // Current connections
+            "0 "                                    // Block number
+            "4E8A4743AA6083F3833DDA1216FE3717 "     // Block Hash (Genesis block hash)
+            "D41D8CD98F00B204E9800998ECF8427E "     // Hash summary.psk (This is the MD5 hash for empty)
+            "0 "                                    // Pending Orders
+            "D41D8CD98F00B204E9800998ECF8427E "     // Hash blchhead.nos (This is the MD5 hash for empty)
+            "%hu "                                    // Connections status [0=Disconnected,1=Connecting,2=Connected,3=Updated]
+            "%hu "                                  // Node IP port
+            "D41D8 "                                // Hash(5) masternodes.txt (This is the MD5 hash for empty)
+            "0 "                                    // MNs Count
+            "00000000000000000000000000000000 "     // NMsData diff/ Besthash diff
+            "0 "                                    // Checked Master Nodes
+            "D41D8CD98F00B204E9800998ECF8427E "     // Hash gvts.psk (This is the MD5 hash for empty)
+            "D41D8\n",                              // Hash(5) CFGs
+            g_node_protocol,
+            g_node_version.c_str(),
+            (long long)time(0),
+            g_node_port,
+            conn_status);
+        if (bufferevent_write(bev, buffer, strlen(buffer)) < 0) {
+            LOG("", "Failed sending pong command!");
+            return -1;
+        }
+        buffer[pong_size - 1] = '\0'; // eliminate the newline char for output
+        LOG(" ---> ", buffer);
+        return 0;
+    }
+    
+    */
     std::string CalculateMerkle(std::vector<std::string> SeedIpAddresses)
     {
     	//Check SeedIpAddresses vector, for each item calculate md5.
@@ -254,7 +407,7 @@ public:
                 std::getline(is, message);
 
                 //if (message == "exit") break;
-
+                std::cout << message;
 
                 if (message == "$PING") {
                     std::cout << "$PING -> $PONG\n";
@@ -293,5 +446,9 @@ private:
     //std::string MerckleTree;
     std::string ProgramVersion = "0.4.2";
     std::string Subversion = "Cb1";
+    std::string g_node_protocol = std::to_string(DEFAULT_NODE_PROTOCOL);
+    std::string g_node_version = DEFAULT_NODE_VERSION;
+    std::string g_node_port = std::to_string(DEFAULT_NODE_PORT);
+
 };
 
